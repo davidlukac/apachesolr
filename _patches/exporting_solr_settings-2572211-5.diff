@@ -1,0 +1,138 @@
+From b52eff6205932147d5b6207fc9815e728db0d039 Mon Sep 17 00:00:00 2001
+From: David Lukac <david.lukac@gmail.com>
+Date: Tue, 22 Sep 2015 09:45:07 +0200
+Subject: [PATCH] Issue #2572211 / #2 - implementation of search page settings
+ `hook_form_alter()` to add the default environment option.
+
+---
+ apachesolr.module | 29 +++++++++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/apachesolr.module b/apachesolr.module
+index b7556f3..12d42d2 100644
+--- a/apachesolr.module
++++ b/apachesolr.module
+@@ -2057,7 +2057,7 @@ function apachesolr_get_indexer_table($type) {
+ 
+ /**
+  * Implements hook_entity_delete().
+- * 
++ *
+  * Delete the entity's entry from a fictional table of all entities.
+  */
+ function apachesolr_entity_delete($entity, $entity_type) {
+@@ -2071,7 +2071,7 @@ function apachesolr_entity_delete($entity, $entity_type) {
+ 
+ /**
+  * Remove a specific entity from a given Solr environment.
+- * 
++ *
+  * @param string $env_id
+  * @param string $entity_type
+  * @param string $entity_id
+@@ -3033,3 +3033,28 @@ function apachesolr_ctools_environment_export($environment, $indent) {
+   $additions_bottom = array('conf' => $environment->conf, 'index_bundles' => $index_bundles);
+   return ctools_export_object('apachesolr_environment', $environment, $indent, NULL, $additions_top, $additions_bottom);
+ }
++
++/**
++ * Implements hook_form_FORM_ID_alter() for apachesolr_search_page_settings_form().
++ *
++ * @see apachesolr_search_page_settings_form()
++ *
++ * @inheritdoc
++ */
++function apachesolr_form_apachesolr_search_page_settings_form_alter(array &$form, array &$form_state, $form_id) {
++  // Common alters.
++  $default = ['default' => 'Default Environment'];
++  $form['info']['env_id']['#options'] = array_merge($form['info']['env_id']['#options'], $default);
++
++  if (count($form_state['build_info']['args']) > 0) {
++    // Alters for already built form.
++    if ($form_state['build_info']['args'][0]['env_id_default'] === TRUE) {
++      // Reflecting default setting on the form.
++      $form['info']['env_id']['#default_value'] = 'default';
++    }
++  }
++  else {
++    // Alters for new form - setting it to default straight away.
++    $form['info']['env_id']['#default_value'] = 'default';
++  }
++}
+-- 
+2.2.1
+
+From 5c216738dd6a01c74ed7d871e2be975176426dfa Mon Sep 17 00:00:00 2001
+From: David Lukac <david.lukac@gmail.com>
+Date: Tue, 22 Sep 2015 10:05:15 +0200
+Subject: [PATCH] Issue #2572211 / #6 - altering search pages list page to
+ indicate where is the default env. used.
+
+---
+ apachesolr_search.admin.inc | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/apachesolr_search.admin.inc b/apachesolr_search.admin.inc
+index 1386201..6ee5640 100644
+--- a/apachesolr_search.admin.inc
++++ b/apachesolr_search.admin.inc
+@@ -83,9 +83,22 @@ function apachesolr_search_page_list_pages() {
+       ),
+     );
+ 
++    // Replace 'Disabled' string with name of default environment.
++    if ($search_page['env_id_default'] === TRUE) {
++      $search_page['env_id'] = apachesolr_default_environment();
++    }
++
+     // Add the search environment
+     $environment = apachesolr_environment_load($search_page['env_id']);
+-    $row[] = $environment ? check_plain($environment['name']) : check_plain(t('<Disabled>'));
++
++    // Altering Environment name output to indicate use of default.
++    if ($search_page['env_id_default'] === TRUE) {
++      $row[] = check_plain(t("default") . ' (' . $environment['name'] . ')');
++    }
++    else {
++      $row[] = $environment ? check_plain($environment['name']) : check_plain(t('<Disabled>'));
++    }
++
+     // Operations
+     $row[] = array('data' => l(t('Edit'), 'admin/config/search/apachesolr/search-pages/' . $search_page['page_id'] . '/edit'));
+     $row[] = array('data' => l(t('Clone'), 'admin/config/search/apachesolr/search-pages/' . $search_page['page_id'] . '/clone'));
+-- 
+2.2.1
+
+From 084b9b685de90b35447272118f297adbdaf36abe Mon Sep 17 00:00:00 2001
+From: David Lukac <david.lukac@gmail.com>
+Date: Tue, 22 Sep 2015 10:11:49 +0200
+Subject: [PATCH] Issue #2572211 / #3 - modifying loading of search pages to
+ handle the default environment.
+
+---
+ apachesolr_search.module | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/apachesolr_search.module b/apachesolr_search.module
+index a94c0a9..0f88a14 100644
+--- a/apachesolr_search.module
++++ b/apachesolr_search.module
+@@ -630,6 +630,15 @@ function apachesolr_search_load_all_search_pages() {
+ 
+   // convert settings to an array
+   foreach ($search_pages as $id => $search_page) {
++    // Replace 'default' environment with real default Environment ID.
++    if ($search_page['env_id'] === 'default') {
++      $search_pages[$id]['env_id'] = apachesolr_default_environment();
++      $search_pages[$id]['env_id_default'] = TRUE;
++    }
++    else {
++      $search_pages[$id]['env_id_default'] = FALSE;
++    }
++
+     if (is_string($search_pages[$id]['settings'])) {
+       $search_pages[$id]['settings'] = unserialize($search_pages[$id]['settings']);
+       // Prevent false outcomes for the following search page
+-- 
+2.2.1
+
