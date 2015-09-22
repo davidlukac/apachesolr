@@ -630,6 +630,15 @@ function apachesolr_search_load_all_search_pages() {
 
   // convert settings to an array
   foreach ($search_pages as $id => $search_page) {
+    // Replace 'default' environment with real default Environment ID.
+    if ($search_page['env_id'] === 'default') {
+      $search_pages[$id]['env_id'] = apachesolr_default_environment();
+      $search_pages[$id]['env_id_default'] = TRUE;
+    }
+    else {
+      $search_pages[$id]['env_id_default'] = FALSE;
+    }
+
     if (is_string($search_pages[$id]['settings'])) {
       $search_pages[$id]['settings'] = unserialize($search_pages[$id]['settings']);
       // Prevent false outcomes for the following search page

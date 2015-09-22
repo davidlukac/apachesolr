@@ -2057,7 +2057,7 @@ function apachesolr_get_indexer_table($type) {
 
 /**
  * Implements hook_entity_delete().
- * 
+ *
  * Delete the entity's entry from a fictional table of all entities.
  */
 function apachesolr_entity_delete($entity, $entity_type) {
@@ -2071,7 +2071,7 @@ function apachesolr_entity_delete($entity, $entity_type) {
 
 /**
  * Remove a specific entity from a given Solr environment.
- * 
+ *
  * @param string $env_id
  * @param string $entity_type
  * @param string $entity_id
@@ -3032,4 +3032,29 @@ function apachesolr_ctools_environment_export($environment, $indent) {
   $additions_top = array();
   $additions_bottom = array('conf' => $environment->conf, 'index_bundles' => $index_bundles);
   return ctools_export_object('apachesolr_environment', $environment, $indent, NULL, $additions_top, $additions_bottom);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for apachesolr_search_page_settings_form().
+ *
+ * @see apachesolr_search_page_settings_form()
+ *
+ * @inheritdoc
+ */
+function apachesolr_form_apachesolr_search_page_settings_form_alter(array &$form, array &$form_state, $form_id) {
+  // Common alters.
+  $default = ['default' => 'Default Environment'];
+  $form['info']['env_id']['#options'] = array_merge($form['info']['env_id']['#options'], $default);
+
+  if (count($form_state['build_info']['args']) > 0) {
+    // Alters for already built form.
+    if ($form_state['build_info']['args'][0]['env_id_default'] === TRUE) {
+      // Reflecting default setting on the form.
+      $form['info']['env_id']['#default_value'] = 'default';
+    }
+  }
+  else {
+    // Alters for new form - setting it to default straight away.
+    $form['info']['env_id']['#default_value'] = 'default';
+  }
 }

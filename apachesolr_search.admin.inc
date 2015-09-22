@@ -83,9 +83,22 @@ function apachesolr_search_page_list_pages() {
       ),
     );
 
+    // Replace 'Disabled' string with name of default environment.
+    if ($search_page['env_id_default'] === TRUE) {
+      $search_page['env_id'] = apachesolr_default_environment();
+    }
+
     // Add the search environment
     $environment = apachesolr_environment_load($search_page['env_id']);
-    $row[] = $environment ? check_plain($environment['name']) : check_plain(t('<Disabled>'));
+
+    // Altering Environment name output to indicate use of default.
+    if ($search_page['env_id_default'] === TRUE) {
+      $row[] = check_plain(t("default") . ' (' . $environment['name'] . ')');
+    }
+    else {
+      $row[] = $environment ? check_plain($environment['name']) : check_plain(t('<Disabled>'));
+    }
+
     // Operations
     $row[] = array('data' => l(t('Edit'), 'admin/config/search/apachesolr/search-pages/' . $search_page['page_id'] . '/edit'));
     $row[] = array('data' => l(t('Clone'), 'admin/config/search/apachesolr/search-pages/' . $search_page['page_id'] . '/clone'));
